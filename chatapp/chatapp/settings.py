@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-g0#57#j%ae5)-s75!5iirh#g0og0oywxtkd*g^k=k)_5c_+@w7
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost' , '10.0.2.2']
+ALLOWED_HOSTS = ['localhost' , '10.0.2.2' , '127.0.0.1']
 
 AUTH_USER_MODEL = 'chat.User'
 
@@ -41,6 +41,9 @@ INSTALLED_APPS = [
     'chat',
     'rest_framework',
     'rest_framework_simplejwt',
+    'daphne',
+    # 'channels',
+
 ]
 
 MIDDLEWARE = [
@@ -79,7 +82,22 @@ REST_FRAMEWORK = {
     )
     
 }
+#Thumbnails
 
+MEDIA_ROOT = BASE_DIR /'media'
+MEDIA_ROOT = '/media/'
+#daphne
+ASGI_APPLICATION = 'chatapp.asgi.application'
+#channels
+
+CHANNEL_LAYERS ={
+    'default':{
+        'BACKEND':'channels_redis.core.RedisChannelLayer',
+        'CONFIG':{
+            'hosts':[{'127.0.0.1' , 6379}]
+        }
+    }
+}
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
