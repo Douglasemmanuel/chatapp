@@ -3,7 +3,9 @@ from asgiref.sync import async_to_sync
 import json
 from django.core.files.base import ContentFile
 import base64
-from .serializers import UserSerializer
+from .serializers import UserSerializer , SearchSerializer , RequestSerializer
+from .models import User , Connection
+from django.db.models import Q
 
 
 class ChatConsumer(WebsocketConsumer):
@@ -41,9 +43,69 @@ class ChatConsumer(WebsocketConsumer):
         #print py dictionary
         print('receive ', json.dumps(data , indent=2))
 
+
+        #search / Filter users
+        if data_source == 'search':
+            self.receive_search(data)
+        # Make Friend request
+        if data_source == 'request.connect':
+            self.receive_request_connect(data)
         #Thumbnail upload
-        if data_source == 'thumbnail':
+        elif data_source == 'thumbnail':
             self.receiver_thumbnail(data)
+
+
+    def receive_request_connect(self , data):
+        username = data.get('username')
+        #attempt to fetch the receiving user
+        try:
+            receiver = User.objects.get(username=username)
+        except User.DoesNotExist:
+            print('Error User not Found')
+            return 
+        # create connection
+        connection = Connection.objects.get_or_create(
+            sender=self.scope['user'],
+            receiver=receiver
+        )
+        # serialized connection
+        serialized = RequestSerializer(connection )
+
+        # send back to sender
+        self.send_group(connection.sender.username , 'request.connect' , serialized.data)
+        self.send
+        
+
+
+
+
+
+
+
+    def receive_search(self , data):
+        query = data.get('query')
+        # Get users from Query search term
+        users = User.objects.filter(
+            Q(username__istartswith=query) |
+            Q(first_name__istartswith=query) |
+            Q(last_name__istartswith=query) 
+        ).exclude(
+            username=self.username
+        )
+        # .annotate(
+        #     pending_then=Exists(
+        #         connection
+        #     )
+        #     pending_me=...
+        #     connected=...
+        # )
+       
+       #serailize the results
+        serailized = SearchSerializer(users, many=True)
+       #send search results back to this user
+        self.send_group(self.username , 'search', serailized.data)
+
+
 
 
     def receive_thumbnail(self , data):
@@ -85,7 +147,6 @@ class ChatConsumer(WebsocketConsumer):
         data.pop('type')
         '''
         return data:
-        -type:'broadcast_group'
         -source:where it originated from
         -data:what ever you want to send as a dict
         '''
